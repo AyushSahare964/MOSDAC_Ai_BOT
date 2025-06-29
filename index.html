@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MOSDAC AI Help Bot</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <style>
+        /* Custom scrollbar for better aesthetics */
+        .chat-box::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .chat-box::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+
+        .chat-box::-webkit-scrollbar-thumb {
+            background: #a7d3f7; /* Lighter blue for thumb */
+            border-radius: 10px;
+        }
+
+        .chat-box::-webkit-scrollbar-thumb:hover {
+            background: #7bb5e8; /* Darker blue on hover */
+        }
+
+        /* Set Inter font globally */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        /* Ensure lucide icons are rendered */
+        [lucide] {
+            display: inline-block;
+        }
+
+        /* Simple fade-in animation for messages */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.3s ease-out;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-100 via-purple-100 to-pink-100 flex items-center justify-center min-h-screen p-4">
+
+    <!-- Chat Container -->
+    <div class="chat-container bg-white rounded-xl shadow-2xl w-full max-w-md mx-auto flex flex-col h-[85vh] sm:h-[90vh] md:h-[80vh] lg:h-[75vh] overflow-hidden border border-gray-200">
+        
+        <!-- Chat Header -->
+        <div class="chat-header bg-gradient-to-r from-blue-700 to-indigo-800 text-white p-4 rounded-t-xl flex items-center justify-center gap-3 text-2xl font-bold shadow-md">
+            <i lucide="rocket" class="w-7 h-7 text-white"></i> <!-- Rocket Icon -->
+            MOSDAC AI Help Bot
+        </div>
+
+        <!-- Chat Box for Messages -->
+        <div id="chat-box" class="chat-box flex-1 p-4 overflow-y-auto bg-gray-50">
+            <!-- Initial Bot Message -->
+            <div class="message bot bg-gray-200 text-gray-800 p-3 rounded-xl rounded-bl-sm max-w-[80%] mb-3 shadow-sm animate-fade-in">
+                <i lucide="sparkles" class="w-4 h-4 inline-block align-middle mr-1"></i> Hello! I'm your MOSDAC AI Help Bot. How can I assist you with meteorological and oceanographic satellite data?
+            </div>
+            <div class="message bot bg-gray-200 text-gray-800 p-3 rounded-xl rounded-bl-sm max-w-[80%] mb-3 shadow-sm animate-fade-in">
+                You can ask me about data products like "sea surface temperature" or "rainfall data", satellites like "INSAT-3D", or available services.
+            </div>
+        </div>
+
+        <!-- Loading Indicator -->
+        <div id="loader" class="loader border-4 border-gray-200 border-t-4 border-t-blue-500 rounded-full w-8 h-8 animate-spin mx-auto my-4 hidden"></div>
+
+        <!-- Chat Input Area -->
+        <div class="chat-input flex p-4 border-t border-gray-200 bg-gray-100 rounded-b-xl">
+            <input 
+                type="text" 
+                id="user-input" 
+                placeholder="Type your message..." 
+                class="flex-1 px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700 text-base"
+            >
+            <button 
+                id="send-button" 
+                class="ml-3 bg-blue-600 text-white px-5 py-2 rounded-full hover:bg-blue-700 transition-all duration-300 ease-in-out flex items-center justify-center text-base font-semibold shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            >
+                <i lucide="send" class="w-5 h-5 mr-1"></i> Send
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Lucide Icons
+        lucide.createIcons();
+
+        const chatBox = document.getElementById('chat-box');
+        const userInput = document.getElementById('user-input');
+        const sendButton = document.getElementById('send-button');
+        const loader = document.getElementById('loader');
+
+        // IMPORTANT: Replace with the actual URL of your Python backend
+        // If running Flask locally, it's usually http://127.0.0.1:5000 or http://localhost:5000
+        const API_URL = 'http://localhost:5000/chat'; 
+
+        // Function to add a message to the chat box
+        function addMessage(text, sender) {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add(
+                'message', 
+                'p-3', 
+                'rounded-xl', 
+                'max-w-[80%]', 
+                'mb-3', 
+                'shadow-sm',
+                'animate-fade-in' // Simple animation class for new messages
+            );
+
+            if (sender === 'user') {
+                messageDiv.classList.add('bg-blue-100', 'text-blue-800', 'self-end', 'ml-auto', 'rounded-br-sm');
+                messageDiv.innerHTML = `<strong>You:</strong> ${text}`;
+            } else { // bot
+                messageDiv.classList.add('bg-gray-200', 'text-gray-800', 'self-start', 'mr-auto', 'rounded-bl-sm');
+                messageDiv.innerHTML = `<i lucide="sparkles" class="w-4 h-4 inline-block align-middle mr-1"></i> <strong>Bot:</strong> ${text}`;
+            }
+            
+            chatBox.appendChild(messageDiv);
+            chatBox.scrollTop = chatBox.scrollHeight; // Auto-scroll to the latest message
+        }
+
+        // Function to send message to backend
+        async function sendMessage() {
+            const message = userInput.value.trim();
+            if (message === '') return;
+
+            addMessage(message, 'user');
+            userInput.value = ''; // Clear input field
+            sendButton.disabled = true; // Disable button while loading
+            loader.style.display = 'block'; // Show loader
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ message: message }), // Send message as JSON
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                addMessage(data.response, 'bot'); // Display bot's response
+
+            } catch (error) {
+                console.error('Error sending message:', error);
+                addMessage("Oops! Something went wrong. Please try again. (Check your Python backend is running and accessible at " + API_URL + ")", 'bot');
+            } finally {
+                sendButton.disabled = false; // Re-enable button
+                loader.style.display = 'none'; // Hide loader
+                userInput.focus(); // Keep input focused after sending
+            }
+        }
+
+        // Event listeners
+        sendButton.addEventListener('click', sendMessage);
+        userInput.addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        // Focus on input when page loads
+        window.onload = () => {
+            userInput.focus();
+        };
+    </script>
+</body>
+</html>
